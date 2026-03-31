@@ -1,0 +1,99 @@
+stream:
+  url: "https://gjirafa-video-live.gjirafa.net/gjvideo-slow/txu-9qc-kab-9fm/tracks-v1/mono.ts.m3u8"
+  crop: [800, 600, 0, 250]   # width, height, x_offset, y_offset
+  reconnect_delay: 2
+
+model:
+  path: "models/best.pt"
+  confidence: 0.15
+  iou: 0.45
+  car_class_id: 0
+  hot_swap_dir: "models"
+
+roi:
+  csv_path: "data/rois_polygons.csv"
+  points_column: "cropped_points"
+  offset_x: 0
+  offset_y: 0
+
+tracking:
+  dwell_frames_required: 120
+  grace_frames: 30
+  reentry_cooldown_frames: 180
+
+line_counter:
+  lines_file: "data/counting_lines.json"
+  grid_size: 40
+  cooldown: 15.0
+
+thresholds:
+  green: 5
+  yellow: 10
+
+clips:
+  output_dir: "data/clips"
+  pre_event_seconds: 30
+  post_event_seconds: 30
+  trigger_occupancy: 10
+  trigger_crossing_rate: 5
+
+alerts:
+  cooldown_seconds: 10
+  channels:
+    webhook:
+      enabled: false
+      url: ""
+  default_rules:
+    - name: "Low Traffic"
+      metric: "occupancy"
+      operator: "<"
+      threshold: 5
+      duration_seconds: 0
+      channels: ["webhook"]
+      enabled: true
+    - name: "Moderate Traffic"
+      metric: "occupancy"
+      operator: ">="
+      threshold: 5
+      duration_seconds: 0
+      channels: ["webhook"]
+      enabled: true
+    - name: "High Traffic"
+      metric: "occupancy"
+      operator: ">="
+      threshold: 10
+      duration_seconds: 0
+      channels: ["webhook"]
+      enabled: true
+
+database:
+  path: "data/traffic.db"
+  retention_days: 30
+  retention_run_hour: 3
+
+auth:
+  secret_key: "CHANGE_THIS_TO_A_RANDOM_SECRET_KEY_IN_PRODUCTION"
+  algorithm: "HS256"
+  token_expire_minutes: 480
+  users:
+    - username: "admin"
+      password: "admin"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  cors_origins:
+    - "http://localhost:5173"
+    - "http://localhost:80"
+    - "http://localhost"
+
+dashboard:
+  history_max_points: 120
+
+forecast:
+  model_path: "models/traffic_congestion_model.pkl"
+
+installer:
+  app_name: "SmartTraffic AI"
+  app_version: "2.1.0"
+  publisher: "SmartTraffic AI"
