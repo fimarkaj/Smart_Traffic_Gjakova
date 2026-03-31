@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Traffic Gjakova</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    /* ── TOKENS ── */
+    :root {
+      --bg:       #000;
+      --accent:   #00e5ff;
+      --green:    #22ff88;
+      --yellow:   #f5c842;
+      --red:      #ff4d4d;
+      --text:     #fff;
+      --muted:    rgba(255,255,255,.5);
+      --border:   rgba(255,255,255,.10);
+      --font-head:'Instrument Serif', serif;
+      --font-body:'Barlow', sans-serif;
+      --font-mono:'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-body); font-weight: 300;
+      font-size: 17px; line-height: 1.65; overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 2px; }
+
+    /* ── LIQUID GLASS ── */
+    .lg {
+      background: rgba(255,255,255,.015);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,.10);
+      position: relative; overflow: hidden;
+    }
+    .lg::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.4px;
+      background: linear-gradient(180deg,
+        rgba(255,255,255,.45) 0%, rgba(255,255,255,.15) 20%,
+        rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+        rgba(255,255,255,.15) 80%, rgba(255,255,255,.45) 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+    .lg-strong {
+      background: rgba(255,255,255,.045);
+      backdrop-filter: blur(50px); -webkit-backdrop-filter: blur(50px);
+      box-shadow: 4px 4px 12px rgba(0,0,0,.15), inset 0 1px 1px rgba(255,255,255,.15);
+      position: relative; overflow: hidden;
+    }
+    .lg-strong::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.4px;
+      background: linear-gradient(180deg,
+        rgba(255,255,255,.50) 0%, rgba(255,255,255,.20) 20%,
+        rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+        rgba(255,255,255,.20) 80%, rgba(255,255,255,.50) 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+
+    /* ── SHARED ── */
+    section { position: relative; z-index: 1; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 2.5rem; }
+    .badge {
+      display: inline-block; font-family: var(--font-body); font-size: .72rem;
+      font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+      color: rgba(255,255,255,.6); padding: .38rem 1.1rem;
+      border-radius: 9999px; margin-bottom: 1.6rem;
+    }
+    .section-head {
+      font-family: var(--font-head); font-style: italic;
+      font-size: clamp(2.8rem, 5.5vw, 5rem);
+      font-weight: 400; color: #fff; letter-spacing: -.02em; line-height: .93;
+    }
+    .reveal { opacity:0; transform:translateY(28px); transition:opacity .75s ease, transform .75s ease; }
+    .reveal.in { opacity:1; transform:none; }
+    .reveal-d1{transition-delay:.1s;} .reveal-d2{transition-delay:.22s;}
+    .reveal-d3{transition-delay:.34s;} .reveal-d4{transition-delay:.46s;}
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 1.2rem; left: 50%; transform: translateX(-50%);
+      z-index: 200; width: min(960px, 92vw);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .55rem .55rem .55rem 1.4rem; border-radius: 9999px; transition: opacity .3s;
+    }
+    .nav-logo {
+      font-family: var(--font-mono); font-size: .8rem; letter-spacing: .16em;
+      color: #fff; text-decoration: none; display: flex; align-items: center; gap: .6rem;
+    }
+    .nav-pulse {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 8px var(--green);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+    .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-body); font-size: .83rem; font-weight: 400;
+      color: rgba(255,255,255,.65); text-decoration: none; transition: color .2s;
+    }
+    .nav-links a:hover { color: #fff; }
+    .btn-nav {
+      font-family: var(--font-body); font-size: .78rem; font-weight: 500;
+      padding: .5rem 1.3rem; border-radius: 9999px; background: #fff; color: #000;
+      border: none; cursor: pointer; transition: opacity .2s, transform .15s; white-space: nowrap;
+    }
+    .btn-nav:hover { opacity: .88; transform: translateY(-1px); }
+
+    /* ════════════════════════════════════════
+       1. HOOK
+    ════════════════════════════════════════ */
+    #hook {
+      position: relative; height: 100vh; min-height: 680px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      overflow: hidden; background: #000; text-align: center;
+    }
+    #hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+    /* strong vignette so text always wins */
+    #hook::after {
+      content: ''; position: absolute; inset: 0; z-index: 1;
+      background: radial-gradient(ellipse 70% 70% at 50% 50%,
+        rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 60%, rgba(0,0,0,.92) 100%);
+      pointer-events: none;
+    }
+    .hook-content {
+      position: relative; z-index: 10;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 0 2rem;
+      transform: translateY(-72px);
+    }
+    .hook-eyebrow {
+      font-family: var(--font-mono); font-size: .72rem; letter-spacing: .2em;
+      color: rgba(255,255,255,.82); text-transform: uppercase; margin-bottom: 2.2rem;
+      font-size: .9rem;
+      opacity: 0; animation: fadeInUp .8s ease .2s forwards;
+    }
+    .hook-question {
+      font-family: var(--font-head); font-style: italic;
+      font-size: clamp(3.8rem, 9vw, 8.5rem);
+      font-weight: 400; line-height: .88; letter-spacing: -.03em;
+      color: #fff; max-width: 900px; margin-bottom: 2.8rem;
+    }
+    .hook-question .word {
+      display: inline-block; opacity: 0; filter: blur(14px);
+      transform: translateY(44px);
+      transition: opacity .5s ease, filter .5s ease, transform .5s ease;
+      margin-right: .2em;
+    }
+    .hook-question .word.in { opacity: 1; filter: blur(0); transform: translateY(0); }
+    .hook-sub {
+      font-family: var(--font-body); font-size: 1.22rem; font-weight: 300;
+      color: rgba(255,255,255,.62); max-width: 540px; margin-bottom: 3rem;
+      opacity: 0; animation: fadeInUp .7s ease 1.1s forwards;
+    }
+    .hook-btns {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+      opacity: 0; animation: fadeInUp .6s ease 1.35s forwards;
+    }
+    @keyframes fadeInUp {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:none; }
+    }
+    .btn-primary {
+      font-family: var(--font-body); font-size: .88rem; font-weight: 500;
+      padding: .82rem 2rem; border-radius: 9999px;
+      display: inline-flex; align-items: center; gap: .5rem;
+      color: #fff;
+      cursor: pointer; border: none; transition: transform .15s, box-shadow .2s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,255,255,.1); }
+    .btn-ghost {
+      font-family: var(--font-body); font-size: .88rem; font-weight: 400;
+      padding: .82rem 2rem; border-radius: 9999px;
+      background: transparent; color: rgba(255,255,255,.55); border: none;
+      cursor: pointer; transition: color .2s; display: inline-flex; align-items: center; gap: .5rem;
+    }
+    .btn-ghost:hover { color: #fff; }
+    /* scroll hint */
+    .scroll-hint {
+      position: absolute; bottom: 2.2rem; left: 50%; transform: translateX(-50%);
+      z-index: 10; display: flex; flex-direction: column; align-items: center; gap: .4rem;
+      font-family: var(--font-mono); font-size: .62rem; color: rgba(255,255,255,.2);
+      letter-spacing: .12em; animation: bounce 2.4s ease-in-out infinite;
+      opacity: 0; animation: fadeInUp .5s ease 1.8s forwards, bounce 2.4s ease-in-out 2.3s infinite;
+    }
+    @keyframes bounce {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(7px); }
+    }
+
+    /* ════════════════════════════════════════
+       2. PROBLEM
+    ════════════════════════════════════════ */
+    #problem {
+      padding: 9rem 2.5rem 8rem;
+      background: linear-gradient(180deg, #000 0%, #03060e 50%, #000 100%);
+    }
+    .problem-headline {
+      font-family: var(--font-head); font-style: italic;
+      font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 400;
+      color: rgba(255,255,255,.88); max-width: 700px;
+      line-height: 1.05; letter-spacing: -.02em; margin-bottom: 5rem;
+    }
+    .problem-headline em { color: var(--red); font-style: italic; }
+    .problem-cards {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1.2rem; max-width: 1060px;
+    }
+    .prob-card { border-radius: 20px; padding: 2.2rem 1.8rem; }
+    .prob-num {
+      font-family: var(--font-head); font-style: italic;
+      font-size: 3.5rem; font-weight: 400; line-height: 1;
+      color: var(--red); opacity: .25; margin-bottom: .8rem;
+    }
+    .prob-card h3 {
+      font-family: var(--font-head); font-style: italic;
+      font-size: 1.4rem; font-weight: 400; color: #fff; margin-bottom: .6rem;
+    }
+    .prob-card p { font-size: .95rem; color: var(--muted); line-height: 1.65; }
+
+    /* ════════════════════════════════════════
+       3. PROOF — numbers
+    ════════════════════════════════════════ */
+    #proof { padding: 8rem 2.5rem; text-align: center; }
+    .proof-vs {
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      gap: 0; max-width: 900px; margin: 3.5rem auto 0; align-items: stretch;
+    }
+    .proof-col { border-radius: 20px; padding: 2.8rem 2rem; }
+    .proof-col-label {
+      font-family: var(--font-mono); font-size: .68rem; letter-spacing: .14em;
+      text-transform: uppercase; margin-bottom: 2rem; display: block;
+    }
+    .proof-col-label.old { color: rgba(255,77,77,.7); }
+    .proof-col-label.new { color: var(--green); }
+    .proof-metric { margin-bottom: 1.8rem; }
+    .proof-metric:last-child { margin-bottom: 0; }
+    .proof-metric-val {
+      font-family: var(--font-head); font-style: italic;
+      font-size: clamp(2.2rem, 4vw, 3.4rem); font-weight: 400; line-height: 1;
+    }
+    .proof-metric-val.bad  { color: var(--red); }
+    .proof-metric-val.good { color: var(--green); }
+    .proof-metric-lbl {
+      font-family: var(--font-body); font-size: .85rem;
+      color: rgba(255,255,255,.92); margin-top: .3rem;
+    }
+    .proof-divider {
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 2rem;
+    }
+    .proof-divider-line {
+      width: 1px; height: 100%; background: rgba(255,255,255,.08);
+      position: relative; display: flex; align-items: center; justify-content: center;
+    }
+    .proof-vs-label {
+      font-family: var(--font-mono); font-size: .65rem; color: rgba(255,255,255,.2);
+      letter-spacing: .1em; writing-mode: vertical-rl; padding: .6rem 0;
+    }
+
+    /* ════════════════════════════════════════
+       4. DECISION — fixed vs adaptive
+    ════════════════════════════════════════ */
+    #decision { padding: 8rem 2.5rem; }
+    .decision-layout {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1.5rem; max-width: 1060px; margin: 3.5rem auto 0;
+    }
+    .decision-card { border-radius: 22px; padding: 2.4rem 2rem; }
+    .decision-card-tag {
+      font-family: var(--font-mono); font-size: .62rem; letter-spacing: .12em;
+      text-transform: uppercase; margin-bottom: 1.4rem; display: inline-block;
+      padding: .25rem .7rem; border-radius: 5px;
+    }
+    .decision-card-tag.fixed { background: rgba(255,77,77,.1);   color: var(--red); }
+    .decision-card-tag.smart { background: rgba(34,255,136,.1);  color: var(--green); }
+    .decision-card h3 {
+      font-family: var(--font-head); font-style: italic;
+      font-size: 1.8rem; font-weight: 400; color: #fff; margin-bottom: 1rem; line-height: 1;
+    }
+    .decision-card p { font-size: .95rem; color: var(--muted); line-height: 1.7; margin-bottom: 1.4rem; }
+    /* logic flow steps */
+    .decision-steps { display: flex; flex-direction: column; gap: .6rem; margin-top: 1.2rem; }
+    .decision-step {
+      display: flex; align-items: center; gap: .8rem;
+      font-size: .88rem; color: rgba(255,255,255,.55);
+    }
+    .decision-step .step-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    .decision-step.active { color: #fff; }
+    .decision-step.active .step-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .decision-step:not(.active) .step-dot { background: rgba(255,255,255,.2); }
+    .decision-card.fixed-card .decision-step .step-dot {
+      background: var(--red);
+      box-shadow: 0 0 6px rgba(255,77,77,.65);
+    }
+
+    /* ════════════════════════════════════════
+       5. EMERGENCY — slot for simulation
+    ════════════════════════════════════════ */
+    #emergency {
+      padding: 8rem 2.5rem;
+      background: linear-gradient(180deg, #000 0%, #05000a 50%, #000 100%);
+    }
+    .emergency-layout {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 5rem; max-width: 1060px; margin: 3.5rem auto 0; align-items: center;
+    }
+    .emergency-text h2 {
+      font-family: var(--font-head); font-style: italic;
+      font-size: clamp(2.2rem, 4vw, 3.6rem); font-weight: 400;
+      color: #fff; line-height: .95; letter-spacing: -.02em; margin-bottom: 1.2rem;
+    }
+    .emergency-text p { font-size: 1rem; color: var(--muted); line-height: 1.7; }
+    /* ── SIMULATION SLOT ──
+       Drop your ambulance simulation here.
+       Replace .sim-slot with <video autoplay loop muted playsinline>
+       or <img src="your-sim.gif"> — same border-radius will apply.
+    */
+    .sim-slot {
+      border-radius: 20px; overflow: hidden; min-height: 300px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #080c14, #0a0e18);
+      position: relative;
+    }
+    .sim-slot-inner {
+      text-align: center; position: relative; z-index: 2; padding: 2rem;
+    }
+    .sim-slot-icon { font-size: 2.8rem; display: block; margin-bottom: 1rem; opacity: .35; }
+    .sim-slot-label {
+      font-family: var(--font-mono); font-size: .65rem; letter-spacing: .12em;
+      color: rgba(255,255,255,.2); text-transform: uppercase;
+    }
+    /* subtle animated border to draw eye */
+    .sim-slot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 20px;
+      background: linear-gradient(45deg, rgba(255,77,77,.08), rgba(255,77,77,.02), rgba(255,77,77,.08));
+      animation: simPulse 3s ease-in-out infinite;
+    }
+    @keyframes simPulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+    /* ════════════════════════════════════════
+       6. PREDICTION — slot + text
+    ════════════════════════════════════════ */
+    #prediction { padding: 8rem 2.5rem; }
+    .prediction-layout {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 5rem; max-width: 1060px; margin: 3.5rem auto 0; align-items: center;
+    }
+    .prediction-text h2 {
+      font-family: var(--font-head); font-style: italic;
+      font-size: clamp(2.2rem, 4vw, 3.4rem); font-weight: 400;
+      color: #fff; line-height: .95; letter-spacing: -.02em; margin-bottom: 1.2rem;
+    }
+    .prediction-text p { font-size: 1rem; color: var(--muted); line-height: 1.7; }
+    /* ── PREDICTION SIMULATION SLOT ──
+       Replace .pred-slot with your forecast chart, heatmap, or gif.
+    */
+    .pred-slot {
+      border-radius: 20px; overflow: hidden; min-height: 280px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #080c14, #0a101a);
+      position: relative;
+    }
+    .pred-slot::before {
+      content: ''; position: absolute; inset: 0; border-radius: 20px;
+      background: linear-gradient(45deg, rgba(0,229,255,.06), rgba(0,229,255,.01), rgba(0,229,255,.06));
+      animation: simPulse 4s ease-in-out infinite;
+    }
+    .pred-slot-inner { text-align: center; position: relative; z-index: 2; padding: 2rem; }
+    .pred-slot-icon { font-size: 2.8rem; display: block; margin-bottom: 1rem; opacity: .3; }
+    .pred-slot-label { font-family: var(--font-mono); font-size: .65rem; letter-spacing: .12em; color: rgba(255,255,255,.18); }
+
+    /* ════════════════════════════════════════
+       7. THE CITY — expanding network metaphor
+    ════════════════════════════════════════ */
+    #city {
+      padding: 8rem 2.5rem;
+      background: linear-gradient(180deg, #000 0%, #020810 50%, #000 100%);
+      text-align: center;
+    }
+    .city-canvas-wrap {
+      width: min(700px, 90vw); height: 400px;
+      margin: 3.5rem auto 0; position: relative;
+    }
+    #city-canvas { width: 100%; height: 100%; display: block; }
+    .city-caption {
+      font-family: var(--font-body); font-size: 1rem; font-weight: 300;
+      color: #fff; margin-top: 2.4rem;
+      max-width: 500px; margin-left: auto; margin-right: auto;
+    }
+
+    /* ════════════════════════════════════════
+       8. SISTEMA — technical (collapsible feel)
+    ════════════════════════════════════════ */
+    #sistema { padding: 7rem 2.5rem; }
+    /* junction map */
+    .map-layout { display:grid; grid-template-columns:1fr; gap:1.4rem; max-width:1100px; margin:2.5rem auto 0; }
+    .map-canvas-wrap { border-radius:20px; overflow:hidden; position:relative; min-height:340px; }
+    #junction-canvas { display:block; width:100%; height:340px; }
+    .map-legend { position:absolute; bottom:1.2rem; left:1.2rem; display:flex; flex-direction:column; gap:.4rem; }
+    .legend-item { display:flex; align-items:center; gap:.5rem; font-family:var(--font-mono); font-size:.6rem; color:rgba(255,255,255,.35); }
+    .legend-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .junction-list { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:1rem; }
+    .junction-card { border-radius:14px; padding:1.35rem 1.4rem; min-height:132px; transition:transform .2s; display:flex; flex-direction:column; justify-content:center; }
+    .junction-card:hover { transform:translateY(-2px); }
+    .jc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.5rem; }
+    .jc-name { font-family:var(--font-mono); font-size:.72rem; color:#fff; letter-spacing:.05em; }
+    .jc-status { font-family:var(--font-mono); font-size:.58rem; letter-spacing:.08em; padding:.15rem .5rem; border-radius:4px; }
+    .jc-status.ok   { background:rgba(34,255,136,.1); color:var(--green); }
+    .jc-status.warn { background:rgba(245,200,66,.1);  color:var(--yellow); }
+    .jc-status.crit { background:rgba(255,77,77,.1);   color:var(--red); }
+    .jc-bar-wrap { height:3px; background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; }
+    .jc-bar { height:100%; border-radius:2px; transition:width .7s ease; }
+    .jc-meta { display:flex; justify-content:space-between; margin-top:.5rem; }
+    .jc-meta span { font-family:var(--font-mono); font-size:.6rem; color:rgba(255,255,255,.3); }
+    /* confidence + alerts */
+    .signals-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; max-width:1100px; margin:2rem auto 0; }
+    .signal-panel { border-radius:20px; padding:1.8rem; }
+    .panel-label { font-family:var(--font-mono); font-size:.62rem; letter-spacing:.14em; color:rgba(255,255,255,.28); margin-bottom:1.4rem; text-transform:uppercase; }
+    .conf-meter-wrap { display:flex; align-items:center; gap:1.4rem; }
+    .conf-arc-wrap { position:relative; width:110px; height:60px; flex-shrink:0; }
+    #conf-arc-svg { width:110px; height:60px; }
+    .conf-val { position:absolute; bottom:0; left:50%; transform:translateX(-50%); font-family:var(--font-head); font-style:italic; font-size:1.4rem; color:#fff; }
+    .conf-classes { flex:1; display:flex; flex-direction:column; gap:.7rem; }
+    .conf-row { display:flex; align-items:center; gap:.6rem; }
+    .conf-row-label { font-family:var(--font-mono); font-size:.6rem; color:rgba(255,255,255,.3); width:52px; flex-shrink:0; }
+    .conf-row-bar-wrap { flex:1; height:3px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; }
+    .conf-row-bar { height:100%; border-radius:2px; transition:width .5s ease; }
+    .conf-row-pct { font-family:var(--font-mono); font-size:.6rem; color:rgba(255,255,255,.3); width:32px; text-align:right; }
+    .alert-list { display:flex; flex-direction:column; gap:.6rem; }
+    .alert-item { display:flex; align-items:flex-start; gap:.8rem; padding:.75rem 1rem; border-radius:10px; border:1px solid transparent; animation:fadeUp .35s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+    .alert-item.crit { background:rgba(255,77,77,.05);  border-color:rgba(255,77,77,.12); }
+    .alert-item.warn { background:rgba(245,200,66,.05); border-color:rgba(245,200,66,.12); }
+    .alert-item.info { background:rgba(0,229,255,.04);  border-color:rgba(0,229,255,.08); }
+    .alert-icon { font-size:.9rem; flex-shrink:0; margin-top:.1rem; }
+    .alert-body strong { font-family:var(--font-mono); font-size:.64rem; display:block; margin-bottom:.1rem; color:#fff; }
+    .alert-body span   { font-size:.78rem; color:rgba(255,255,255,.38); }
+    .alert-ts { font-family:var(--font-mono); font-size:.56rem; color:rgba(255,255,255,.22); margin-left:auto; padding-left:.5rem; white-space:nowrap; }
+    /* dashboard */
+    .dash-shell { max-width:1100px; margin:2rem auto 0; border-radius:16px; overflow:hidden; box-shadow:0 40px 100px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.06); }
+    .dash-chrome { background:#0d1119; padding:.65rem 1rem; display:flex; align-items:center; gap:.4rem; border-bottom:1px solid rgba(255,255,255,.05); }
+    .dash-chrome .dr{width:9px;height:9px;border-radius:50%;background:#ff5f57;}
+    .dash-chrome .dy{width:9px;height:9px;border-radius:50%;background:#febc2e;}
+    .dash-chrome .dg{width:9px;height:9px;border-radius:50%;background:#28c840;}
+    .dash-chrome .durl { margin-left:.6rem; flex:1; max-width:360px; height:20px; background:rgba(255,255,255,.04); border-radius:4px; display:flex; align-items:center; padding:0 .6rem; font-family:var(--font-mono); font-size:.6rem; color:rgba(255,255,255,.25); }
+    .dash-body { background:#07090d; padding:1.4rem; display:grid; grid-template-columns:190px 1fr 230px; gap:1.1rem; min-height:340px; }
+    .dash-sidebar { display:flex; flex-direction:column; gap:.4rem; }
+    .dash-sb-item { height:32px; border-radius:6px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.04); display:flex; align-items:center; padding:0 .8rem; font-family:var(--font-mono); font-size:.62rem; color:rgba(255,255,255,.25); gap:.4rem; }
+    .dash-sb-item.active { background:rgba(0,229,255,.06); border-color:rgba(0,229,255,.18); color:var(--accent); }
+    .dash-sb-dot { width:4px; height:4px; border-radius:50%; background:currentColor; flex-shrink:0; }
+    .dash-main { display:grid; grid-template-rows:auto 1fr; gap:.8rem; }
+    .dash-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:.7rem; }
+    .dash-kpi { background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); border-radius:8px; padding:.8rem; }
+    .dash-kpi .dkv { font-family:var(--font-head); font-style:italic; font-size:1.3rem; color:var(--accent); }
+    .dash-kpi .dkl { font-family:var(--font-mono); font-size:.53rem; color:rgba(255,255,255,.25); letter-spacing:.06em; }
+    .dash-kpi .dkb { display:inline-block; font-family:var(--font-mono); font-size:.53rem; padding:.1rem .4rem; border-radius:3px; margin-top:.2rem; }
+    .dkb.up   { background:rgba(34,255,136,.1);  color:var(--green); }
+    .dkb.down { background:rgba(255,107,53,.1);  color:#ff6b35; }
+    .dash-chart { background:rgba(255,255,255,.015); border:1px solid rgba(255,255,255,.04); border-radius:8px; padding:.8rem; }
+    .dash-chart-lbl { font-family:var(--font-mono); font-size:.52rem; color:rgba(255,255,255,.2); margin-bottom:.4rem; letter-spacing:.08em; }
+    #sparkline-svg { width:100%; height:65px; }
+    .dash-log-col { display:flex; flex-direction:column; background:rgba(255,255,255,.015); border:1px solid rgba(255,255,255,.04); border-radius:8px; overflow:hidden; }
+    .dash-log-hdr { padding:.55rem .8rem; border-bottom:1px solid rgba(255,255,255,.04); font-family:var(--font-mono); font-size:.56rem; color:rgba(255,255,255,.22); display:flex; align-items:center; gap:.4rem; }
+    .dash-log-ld { width:4px; height:4px; border-radius:50%; background:var(--green); animation:blink 1.3s step-start infinite; }
+    @keyframes blink { 50%{opacity:0} }
+    .dash-log-body { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+    .dlr { padding:.28rem .8rem; border-bottom:1px solid rgba(255,255,255,.025); font-family:var(--font-mono); font-size:.57rem; display:flex; gap:.4rem; align-items:baseline; white-space:nowrap; overflow:hidden; }
+    .dlr .dt{color:rgba(255,255,255,.2);} .dlr .dj{color:var(--accent);} .dlr .dm{color:rgba(255,255,255,.38); overflow:hidden; text-overflow:ellipsis;} .dlr .dc{color:var(--green);margin-left:auto;flex-shrink:0;}
+
+    /* ════════════════════════════════════════
+       9. CLOSE
+    ════════════════════════════════════════ */
+    #close {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 4rem 2rem;
+      position: relative; overflow: hidden;
+      background: #000;
+    }
+    #close-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+    #close::after {
+      content: ''; position: absolute; inset: 0; z-index: 1;
+      background: radial-gradient(ellipse 80% 80% at 50% 50%,
+        rgba(0,0,0,0) 0%, rgba(0,0,0,.7) 70%, rgba(0,0,0,.97) 100%);
+      pointer-events: none;
+    }
+    .close-content { position: relative; z-index: 10; }
+    .close-eyebrow {
+      font-family: var(--font-mono); font-size: .72rem; letter-spacing: .2em;
+      color: rgba(255,255,255,.3); text-transform: uppercase; margin-bottom: 2.4rem;
+    }
+    .close-line {
+      font-family: var(--font-head); font-style: italic;
+      font-size: clamp(3.5rem, 8.5vw, 8rem);
+      font-weight: 400; line-height: .88; letter-spacing: -.03em;
+      color: #fff; max-width: 900px; margin: 0 auto 3rem;
+    }
+    .close-line .word {
+      display: inline-block; opacity: 0; filter: blur(14px); transform: translateY(40px);
+      transition: opacity .5s ease, filter .5s ease, transform .5s ease;
+      margin-right: .22em;
+    }
+    .close-line .word.in { opacity: 1; filter: blur(0); transform: translateY(0); }
+    .close-project {
+      font-family: var(--font-mono); font-size: .75rem; letter-spacing: .2em;
+      color: rgba(255,255,255,.28); text-transform: uppercase; margin-top: 3.5rem;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid rgba(255,255,255,.06);
+      padding: 1.8rem 2.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 1100px; margin: 0 auto;
+      font-family: var(--font-mono); font-size: .62rem; color: rgba(255,255,255,.18);
+    }
+
+    /* ════════════════════════════════════════
+       VIDEO SECTIONS
+    ════════════════════════════════════════ */
+    .video-section {
+      padding: 0 2.5rem 7rem;
+      position: relative; z-index: 1;
+    }
+    .video-section-2 {
+      padding: 0 2.5rem 8rem;
+      position: relative; z-index: 1;
+      background: linear-gradient(180deg, #03060e 0%, #000 100%);
+    }
+    .video-wrapper {
+      max-width: 960px; margin: 0 auto;
+      position: relative;
+    }
+    .video-cinema {
+      border-radius: 20px; overflow: hidden;
+      position: relative;
+      background: #000;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.08),
+        0 40px 100px rgba(0,0,0,.8),
+        0 0 80px rgba(0,229,255,.04);
+    }
+    .video-cinema video {
+      width: 100%; display: block;
+      border-radius: 20px;
+    }
+    /* Custom play overlay */
+    .video-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.45);
+      border-radius: 20px;
+      transition: opacity .3s ease;
+      cursor: pointer;
+      z-index: 5;
+    }
+    .video-overlay.hidden { opacity: 0; pointer-events: none; }
+    .play-btn-outer {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: rgba(255,255,255,.08);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1.5px solid rgba(255,255,255,.22);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .2s ease, background .2s ease;
+      box-shadow: 0 0 40px rgba(0,229,255,.15);
+    }
+    .video-overlay:hover .play-btn-outer {
+      transform: scale(1.1);
+      background: rgba(0,229,255,.12);
+      border-color: rgba(0,229,255,.5);
+    }
+    .play-btn-outer svg { margin-left: 5px; }
+    /* Video label strip */
+    .video-label {
+      display: flex; align-items: center; gap: .7rem;
+      margin-bottom: 1.4rem;
+    }
+    .video-label-line {
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, rgba(0,229,255,.25), transparent);
+    }
+    .video-label-text {
+      font-family: var(--font-mono); font-size: .62rem;
+      letter-spacing: .16em; text-transform: uppercase;
+      color: rgba(0,229,255,.5);
+    }
+    /* Glow accent under video */
+    .video-glow {
+      position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%);
+      width: 70%; height: 80px; border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(0,229,255,.07) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 860px) {
+      nav { width: 94vw; padding: .5rem .5rem .5rem 1rem; }
+      .nav-links { display: none; }
+      .problem-cards { grid-template-columns: 1fr; }
+      .proof-vs { grid-template-columns: 1fr; }
+      .proof-divider { display: none; }
+      .decision-layout { grid-template-columns: 1fr; }
+      .emergency-layout, .prediction-layout { grid-template-columns: 1fr; gap: 2.5rem; }
+      .map-layout { grid-template-columns: 1fr; }
+      .junction-list { grid-template-columns: 1fr; }
+      .signals-grid { grid-template-columns: 1fr; }
+      .dash-body { grid-template-columns: 1fr; }
+      .dash-sidebar, .dash-log-col { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════
+     NAV
+════════════════════════════════════ -->
+<nav class="lg">
+  <a href="#hook" class="nav-logo">
+    <span class="nav-pulse"></span>
+    STG
+  </a>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#decision">Decision</a></li>
+    <li><a href="#city">The City</a></li>
+    <li><a href="#sistema">Sistemi</a></li>
+  </ul>
+  <button class="btn-nav" onclick="window.location.href='http://localhost:8501'">
+    Open Dashboard ↗
+  </button>
+</nav>
+
+<!-- ════════════════════════════════════
+     1. HOOK
+════════════════════════════════════ -->
+<section id="hook">
+  <canvas id="hero-canvas"></canvas>
+
+  <!-- VIDEO SLOT — drop your detection clip here
+  <video style="position:absolute;top:20%;left:0;right:0;width:100%;height:auto;object-fit:contain;z-index:1;opacity:.4;" autoplay loop muted playsinline>
+    <source src="YOUR_CLIP.mp4" type="video/mp4">
+  </video>
+  -->
+
+  <div class="hook-content">
+    <p class="hook-eyebrow">SMART TRAFFIC GJAKOVA</p>
+
+    <h1 class="hook-question" id="hook-question">
+      Why are we waiting?
+    </h1>
+
+    <p class="hook-sub">
+      Every day, drivers stop at red lights with nothing coming the other way.
+    </p>
+
+    <div class="hook-btns">
+      <button class="btn-primary lg-strong"
+        onclick="document.getElementById('problem').scrollIntoView({behavior:'smooth'})">
+        See the problem ↓
+      </button>
+      <button class="btn-ghost"
+        onclick="window.location.href='http://localhost:8501'">
+        Open Dashboard ↗
+      </button>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+    SCROLL
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     VIDEO 1 — Between hook and problem
+════════════════════════════════════ -->
+<section class="video-section" style="background:#000;">
+  <div class="video-wrapper reveal">
+    <div class="video-label">
+      <span class="video-label-text">Live footage</span>
+      <div class="video-label-line"></div>
+    </div>
+    <div class="video-cinema lg">
+      <video id="vid1" playsinline preload="metadata"
+        src="C:\Users\AM Student\Downloads\drive-download-20260327T071152Z-1-001\first_video.mp4">
+        Your browser does not support HTML5 video.
+      </video>
+      <div class="video-overlay" id="overlay1" onclick="toggleVideo('vid1','overlay1')">
+        <div class="play-btn-outer">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
+            <polygon points="5,3 19,12 5,21"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="video-glow"></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     2. PROBLEM
+════════════════════════════════════ -->
+<section id="problem">
+  <div class="container">
+    <span class="badge lg reveal">The Problem</span>
+
+    <p class="problem-headline reveal reveal-d1">
+      Traffic lights run on<br><em>fixed timers.</em><br>They don't see the road.
+    </p>
+
+    <div class="problem-cards">
+      <div class="prob-card lg reveal reveal-d1">
+        <div class="prob-num">01</div>
+        <h3>Fixed timing</h3>
+        <p>Red stays red for 60 seconds whether there are 20 cars waiting or none. The light doesn't know the difference.</p>
+      </div>
+      <div class="prob-card lg reveal reveal-d2">
+        <div class="prob-num">02</div>
+        <h3>No awareness</h3>
+        <p>The system counts seconds, not vehicles. It cannot react to an empty road, a traffic jam, or an emergency.</p>
+      </div>
+      <div class="prob-card lg reveal reveal-d3">
+        <div class="prob-num">03</div>
+        <h3>Wasted time</h3>
+        <p>Thousands of minutes lost every day. Fuel burned. Frustration built. All because a timer can't see.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     VIDEO 2 — Between problem and proof
+════════════════════════════════════ -->
+<section class="video-section-2">
+  <div class="video-wrapper reveal">
+    <div class="video-label">
+      <span class="video-label-text">System in action</span>
+      <div class="video-label-line"></div>
+    </div>
+    <div class="video-cinema lg">
+      <video id="vid2" playsinline preload="metadata"
+        src="C:\Users\AM Student\Downloads\drive-download-20260327T071152Z-1-001\second_video.mp4">
+        Your browser does not support HTML5 video.
+      </video>
+      <div class="video-overlay" id="overlay2" onclick="toggleVideo('vid2','overlay2')">
+        <div class="play-btn-outer">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
+            <polygon points="5,3 19,12 5,21"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="video-glow"></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     3. PROOF
+════════════════════════════════════ -->
+<section id="proof">
+  <div class="container" style="text-align:center;">
+    <span class="badge lg reveal">The Numbers</span>
+    <h2 class="section-head reveal reveal-d1">What changes when<br>the system can see.</h2>
+
+    <div class="proof-vs reveal reveal-d2">
+      <div class="proof-col lg">
+        <span class="proof-col-label old">Fixed system — today</span>
+        <div class="proof-metric">
+          <div class="proof-metric-val bad">38s</div>
+          <div class="proof-metric-lbl">Average wait per vehicle</div>
+        </div>
+        <div class="proof-metric">
+          <div class="proof-metric-val bad">38%</div>
+          <div class="proof-metric-lbl">Traffic flow efficiency</div>
+        </div>
+        <div class="proof-metric">
+          <div class="proof-metric-val bad">670</div>
+          <div class="proof-metric-lbl">Vehicles</div>
+        </div>
+      </div>
+
+      <div class="proof-divider">
+        <div class="proof-divider-line">
+          <span class="proof-vs-label">VS</span>
+        </div>
+      </div>
+
+      <div class="proof-col lg">
+        <span class="proof-col-label new">Smart Traffic Gjakova</span>
+        <div class="proof-metric">
+          <div class="proof-metric-val good">12s</div>
+          <div class="proof-metric-lbl">Less waiting time</div>
+        </div>
+        <div class="proof-metric">
+          <div class="proof-metric-val good">+68%</div>
+          <div class="proof-metric-lbl">Traffic flow efficiency</div>
+        </div>
+        <div class="proof-metric">
+          <div class="proof-metric-val good">850</div>
+          <div class="proof-metric-lbl">Vehicles</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     4. DECISION
+════════════════════════════════════ -->
+<section id="decision">
+  <div class="container">
+    <span class="badge lg reveal">How It Decides</span>
+    <h2 class="section-head reveal reveal-d1">
+      Not a timer.<br>A decision.
+    </h2>
+    <p class="reveal reveal-d2" style="color:var(--muted);font-size:1rem;max-width:500px;margin:.8rem 0 0;">
+      The system reads the situation in real time and acts on what it sees — not what a schedule says.
+    </p>
+
+    <div class="decision-layout">
+
+      <div class="decision-card fixed-card lg reveal reveal-d2">
+        <span class="decision-card-tag fixed">Fixed system</span>
+        <h3>Same answer. Every time.</h3>
+        <p>No matter what's happening on the road, the response is always identical. A preset sequence that repeats, blindly, forever.</p>
+        <div class="decision-steps">
+          <div class="decision-step">
+            <span class="step-dot"></span> Timer starts
+          </div>
+          <div class="decision-step">
+            <span class="step-dot"></span> Red for 60s
+          </div>
+          <div class="decision-step">
+            <span class="step-dot"></span> Green for 30s
+          </div>
+          <div class="decision-step">
+            <span class="step-dot"></span> Repeat. Always.
+          </div>
+        </div>
+      </div>
+
+      <div class="decision-card lg reveal reveal-d3">
+        <span class="decision-card-tag smart">Smart system</span>
+        <h3>Different answer. Every situation.</h3>
+        <p>The camera sees the road. The AI reads the situation. The light responds to what's actually there — not a schedule.</p>
+        <div class="decision-steps">
+          <div class="decision-step active">
+            <span class="step-dot"></span> Camera sees traffic
+          </div>
+          <div class="decision-step active">
+            <span class="step-dot"></span> AI reads the situation
+          </div>
+          <div class="decision-step active">
+            <span class="step-dot"></span> Decision made in real time
+          </div>
+          <div class="decision-step active">
+            <span class="step-dot"></span> Light responds accordingly
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     7. THE CITY
+════════════════════════════════════ -->
+<section id="city">
+  <div class="container">
+    <span class="badge lg reveal">The Vision</span>
+    <h2 class="section-head reveal reveal-d1">
+      One intersection.<br>Now imagine the whole city.
+    </h2>
+    <p class="reveal reveal-d2" style="color:var(--muted);font-size:1.05rem;max-width:520px;margin:.8rem auto 0;">
+      The same logic applied to every junction. Every light aware. Every road connected.
+    </p>
+  </div>
+
+  <div class="city-canvas-wrap reveal reveal-d3">
+    <canvas id="city-canvas"></canvas>
+  </div>
+
+  <p class="city-caption reveal reveal-d4">
+    Gjakova — one city, every intersection, one intelligent network.
+  </p>
+</section>
+
+<!-- ════════════════════════════════════
+     8. SISTEMI — technical section
+════════════════════════════════════ -->
+<section id="sistema">
+  <div class="container">
+    <span class="badge lg reveal">Sistemi</span>
+    <h2 class="section-head reveal reveal-d1">Under the hood.</h2>
+    <p class="reveal reveal-d2" style="color:var(--muted);font-size:1rem;max-width:500px;margin:.8rem 0 0;">
+      YOLOv11 detection · ByteTrack vehicle tracking · SQLite logging · Streamlit dashboard
+    </p>
+
+    <!-- Junction map -->
+    <div class="map-layout reveal reveal-d3">
+      <div class="junction-list" id="junction-list"></div>
+    </div>
+
+    <!-- Dashboard mockup -->
+    <div class="dash-shell reveal reveal-d2" style="margin-top:1.4rem;">
+      <div class="dash-chrome">
+        <span class="dr"></span><span class="dy"></span><span class="dg"></span>
+        <span class="durl">localhost:8501 — Smart Traffic Gjakova</span>
+        <div style="margin-left:auto;">
+          <button class="btn-nav" style="font-size:.7rem;padding:.38rem 1rem;" onclick="window.location.href='http://localhost:8501'">Open ↗</button>
+        </div>
+      </div>
+      <div class="dash-body">
+        <div class="dash-sidebar">
+          <div class="dash-sb-item active"><span class="dash-sb-dot"></span>Live Detection</div>
+          <div class="dash-sb-item"><span class="dash-sb-dot"></span>Junctions</div>
+          <div class="dash-sb-item"><span class="dash-sb-dot"></span>Analytics</div>
+          <div class="dash-sb-item"><span class="dash-sb-dot"></span>History</div>
+          <div class="dash-sb-item"><span class="dash-sb-dot"></span>Settings</div>
+        </div>
+        <div class="dash-main">
+          <div class="dash-kpis">
+            <div class="dash-kpi"><div class="dkl">ACTIVE VEHICLES</div><div class="dkv" id="kpi-v">—</div><span class="dkb up">↑ LIVE</span></div>
+            <div class="dash-kpi"><div class="dkl">AVG WAIT TIME</div><div class="dkv" id="kpi-w">—</div><span class="dkb down">▼ 12%</span></div>
+            <div class="dash-kpi"><div class="dkl">ROI OCCUPANCY</div><div class="dkv" id="kpi-o">—</div><span class="dkb up">NORMAL</span></div>
+          </div>
+          <div class="dash-chart">
+            <div class="dash-chart-lbl">VEHICLE COUNT — LAST 30s</div>
+            <svg id="sparkline-svg" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+        <div class="dash-log-col">
+          <div class="dash-log-hdr"><span class="dash-log-ld"></span>SQLITE LOG</div>
+          <div class="dash-log-body" id="inline-log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     9. CLOSE
+════════════════════════════════════ -->
+<section id="close">
+  <canvas id="close-canvas"></canvas>
+
+  <div class="close-content">
+    <p class="close-eyebrow reveal">Smart Traffic Gjakova</p>
+
+    <h2 class="close-line" id="close-line">
+      Let's make traffic smart.
+    </h2>
+
+    <div class="reveal reveal-d3" style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:2.8rem;">
+      <button class="btn-primary lg-strong" style="font-size:.95rem;padding:.95rem 2.6rem;"
+        onclick="window.location.href='http://localhost:8501'">
+        Open Dashboard ↗
+      </button>
+      <button class="btn-ghost"
+        onclick="document.getElementById('sistema').scrollIntoView({behavior:'smooth'})">
+        Explore the system
+      </button>
+    </div>
+
+    <p class="close-project reveal reveal-d4">
+      Gjakova · YOLOv11 · ByteTrack · SQLite · Streamlit
+    </p>
+  </div>
+</section>
+
+<footer>
+  <span>Smart Traffic Gjakova</span>
+  <span>YOLOv11 · ByteTrack · SQLite · Streamlit · Python</span>
+</footer>
+
+
+<!-- ════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════ -->
+<script>
+/* ══════════════════════════
+   HERO CANVAS — atmospheric
+══════════════════════════ */
+(function(){
+  const canvas = document.getElementById('hero-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H;
+  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  const orbs = [
+    {x:.5,  y:.38, r:.42, c:'rgba(0,160,255,',  s:.00007},
+    {x:.22, y:.62, r:.30, c:'rgba(0,70,180,',   s:.00011},
+    {x:.78, y:.52, r:.34, c:'rgba(0,90,210,',   s:.00006},
+    {x:.5,  y:.78, r:.24, c:'rgba(0,30,110,',   s:.00014},
+  ];
+  let t = 0;
+  if (!orbs._pts) orbs._pts = Array.from({length:55}, ()=>({
+    x:Math.random()*1920, y:Math.random()*1080,
+    vx:(Math.random()-.5)*.22, vy:(Math.random()-.5)*.22,
+    r:Math.random()*1.1+.3
+  }));
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    orbs.forEach((o,i)=>{
+      const ox=W*(o.x+Math.sin(t*o.s*60+i)*.055);
+      const oy=H*(o.y+Math.cos(t*o.s*40+i)*.038);
+      const r =Math.min(W,H)*o.r;
+      const g =ctx.createRadialGradient(ox,oy,0,ox,oy,r);
+      g.addColorStop(0,o.c+'.10)'); g.addColorStop(.5,o.c+'.035)'); g.addColorStop(1,o.c+'0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ox,oy,r,0,Math.PI*2); ctx.fill();
+    });
+    ctx.strokeStyle='rgba(255,255,255,.018)'; ctx.lineWidth=1;
+    for(let x=0;x<W;x+=72){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=72){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    orbs._pts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,229,255,.22)'; ctx.fill();
+    });
+    t++; requestAnimationFrame(draw);
+  }
+  draw();
+}());
+
+/* ══════════════════════════
+   CLOSE CANVAS — subtle orbs
+══════════════════════════ */
+(function(){
+  const canvas = document.getElementById('close-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  function resize(){ W=canvas.width=canvas.offsetWidth||window.innerWidth; H=canvas.height=canvas.offsetHeight||window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  let t=0;
+  const orbs=[
+    {x:.5,y:.5,r:.55,c:'rgba(0,200,255,',s:.00005},
+    {x:.3,y:.6,r:.35,c:'rgba(0,80,200,', s:.00009},
+    {x:.7,y:.4,r:.3, c:'rgba(0,60,180,', s:.00007},
+  ];
+  function draw(){
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    orbs.forEach((o,i)=>{
+      const ox=W*(o.x+Math.sin(t*o.s*60+i)*.05);
+      const oy=H*(o.y+Math.cos(t*o.s*40+i)*.04);
+      const r=Math.min(W,H)*o.r;
+      const g=ctx.createRadialGradient(ox,oy,0,ox,oy,r);
+      g.addColorStop(0,o.c+'.10)'); g.addColorStop(.6,o.c+'.03)'); g.addColorStop(1,o.c+'0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ox,oy,r,0,Math.PI*2); ctx.fill();
+    });
+    t++; requestAnimationFrame(draw);
+  }
+  draw();
+}());
+
+/* ══════════════════════════
+   HOOK WORD BLUR-IN
+══════════════════════════ */
+(function(){
+  const el = document.getElementById('hook-question');
+  el.innerHTML = el.textContent.trim().split(' ')
+    .map(w=>`<span class="word">${w}</span>`).join('');
+  el.querySelectorAll('.word').forEach((w,i)=>
+    setTimeout(()=>w.classList.add('in'), 200 + i*130)
+  );
+}());
+
+/* ══════════════════════════
+   CLOSE LINE BLUR-IN (on scroll into view)
+══════════════════════════ */
+(function(){
+  const el = document.getElementById('close-line');
+  el.innerHTML = el.textContent.trim().split(' ')
+    .map(w=>`<span class="word">${w}</span>`).join('');
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.querySelectorAll('.word').forEach((w,i)=>
+          setTimeout(()=>w.classList.add('in'), 100+i*120)
+        );
+        obs.unobserve(e.target);
+      }
+    });
+  },{threshold:.3});
+  obs.observe(el);
+}());
+
+/* ══════════════════════════
+   SCROLL REVEAL
+══════════════════════════ */
+const revObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting){e.target.classList.add('in');revObs.unobserve(e.target);} });
+},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>revObs.observe(el));
+
+/* ══════════════════════════
+   CITY CANVAS — expanding network
+══════════════════════════ */
+(function(){
+  const canvas = document.getElementById('city-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, phase=0, spawnTimer=0;
+
+  function resize(){
+    const rect = canvas.parentElement.getBoundingClientRect();
+    W=canvas.width=rect.width||700; H=canvas.height=rect.height||400;
+  }
+  resize(); window.addEventListener('resize', resize);
+
+  // nodes — start with one in the center, more appear over time
+  const nodes = [{
+    x:.5, y:.5, born:0, r:10, label:'J-01',
+    active:true, pulseT:0, connections:[]
+  }];
+
+  const SPAWN_SEQUENCE = [
+    {x:.28,y:.3,  label:'J-02'}, {x:.72,y:.3,  label:'J-03'},
+    {x:.18,y:.58, label:'J-04'}, {x:.82,y:.58, label:'J-05'},
+    {x:.35,y:.75, label:'J-06'}, {x:.65,y:.75, label:'J-07'},
+    {x:.5, y:.15, label:'J-08'}, {x:.12,y:.4,  label:'J-09'},
+    {x:.88,y:.4,  label:'J-10'}, {x:.5, y:.9,  label:'J-11'},
+  ];
+  let spawnIdx = 0;
+
+  // observe scroll to start city animation
+  let cityStarted = false;
+  const cityObs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting && !cityStarted){ cityStarted=true; } });
+  },{threshold:.3});
+  cityObs.observe(canvas);
+
+  function getColor(n){
+    const t = (phase - n.born) / 60;
+    if(t < 1) return `rgba(0,229,255,${Math.min(t,.8)})`;
+    return '#00e5ff';
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // spawn new nodes over time
+    if(cityStarted){
+      spawnTimer++;
+      if(spawnTimer % 90 === 0 && spawnIdx < SPAWN_SEQUENCE.length){
+        const s = SPAWN_SEQUENCE[spawnIdx++];
+        const newNode = {...s, born:phase, r:8, active:true, pulseT:0, connections:[]};
+        // connect to 1-2 closest existing nodes
+        const sorted = [...nodes].sort((a,b)=>{
+          const da = (a.x-s.x)**2+(a.y-s.y)**2;
+          const db = (b.x-s.x)**2+(b.y-s.y)**2;
+          return da-db;
+        });
+        sorted.slice(0,2).forEach(n=>newNode.connections.push(n));
+        nodes.push(newNode);
+      }
+    }
+
+    // draw connections
+    nodes.forEach(n=>{
+      n.connections.forEach(c=>{
+        const age = Math.min((phase - n.born)/40, 1);
+        ctx.strokeStyle=`rgba(0,229,255,${age*.15})`;
+        ctx.lineWidth=1; ctx.setLineDash([4,6]);
+        ctx.beginPath();
+        ctx.moveTo(n.x*W, n.y*H);
+        ctx.lineTo(c.x*W, c.y*H);
+        ctx.stroke(); ctx.setLineDash([]);
+      });
+    });
+
+    // draw nodes
+    nodes.forEach(n=>{
+      n.pulseT = (n.pulseT||0)+.04;
+      const age  = Math.min((phase - n.born)/40, 1);
+      const glow = 20 + Math.sin(n.pulseT)*8;
+      const g = ctx.createRadialGradient(n.x*W, n.y*H, 0, n.x*W, n.y*H, glow);
+      g.addColorStop(0, `rgba(0,229,255,${age*.3})`);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.arc(n.x*W, n.y*H, glow, 0, Math.PI*2); ctx.fill();
+
+      ctx.fillStyle=`rgba(0,229,255,${age*.9})`;
+      ctx.beginPath(); ctx.arc(n.x*W, n.y*H, 4+age*2, 0, Math.PI*2); ctx.fill();
+
+      if(age > .5){
+        ctx.fillStyle=`rgba(255,255,255,${age*.5})`;
+        ctx.font=`9px JetBrains Mono, monospace`; ctx.textAlign='center';
+        ctx.fillText(n.label, n.x*W, n.y*H+20);
+      }
+    });
+
+    phase++; requestAnimationFrame(draw);
+  }
+  draw();
+}());
+
+/* ══════════════════════════
+   JUNCTION DATA
+══════════════════════════ */
+const JUNCTIONS = [
+  {id:'J4-7',label:'Junction 4-7',x:.22,y:.30,occ:42,vehicles:14,status:'ok'},
+  {id:'J6-1',label:'Junction 6-1',x:.58,y:.22,occ:78,vehicles:31,status:'warn'},
+  {id:'J2-3',label:'Junction 2-3',x:.78,y:.62,occ:91,vehicles:47,status:'crit'},
+  {id:'J8-5',label:'Junction 8-5',x:.35,y:.68,occ:33,vehicles:9, status:'ok'},
+];
+const SCOL={ok:'#22ff88',warn:'#f5c842',crit:'#ff4d4d'};
+const JIDS=JUNCTIONS.map(j=>j.id);
+
+(function(){
+  const c=document.getElementById('junction-canvas'); if(!c) return;
+  const ctx2=c.getContext('2d');
+  const links=[[0,1],[1,2],[2,3],[3,0],[1,3]];
+  function rsz(){const r=c.parentElement.getBoundingClientRect();c.width=r.width;c.height=340;}
+  rsz(); window.addEventListener('resize',rsz);
+  function draw(){
+    const W=c.width,H=c.height;
+    ctx2.clearRect(0,0,W,H); ctx2.fillStyle='#050810'; ctx2.fillRect(0,0,W,H);
+    ctx2.strokeStyle='rgba(255,255,255,.03)'; ctx2.lineWidth=1;
+    for(let x=0;x<W;x+=40){ctx2.beginPath();ctx2.moveTo(x,0);ctx2.lineTo(x,H);ctx2.stroke();}
+    for(let y=0;y<H;y+=40){ctx2.beginPath();ctx2.moveTo(0,y);ctx2.lineTo(W,y);ctx2.stroke();}
+    links.forEach(([a,b])=>{
+      const ja=JUNCTIONS[a],jb=JUNCTIONS[b];
+      ctx2.strokeStyle='rgba(0,229,255,.08)'; ctx2.lineWidth=1.5; ctx2.setLineDash([5,5]);
+      ctx2.beginPath(); ctx2.moveTo(ja.x*W,ja.y*H); ctx2.lineTo(jb.x*W,jb.y*H); ctx2.stroke(); ctx2.setLineDash([]);
+    });
+    JUNCTIONS.forEach(j=>{
+      const cx=j.x*W,cy=j.y*H,col=SCOL[j.status];
+      const g=ctx2.createRadialGradient(cx,cy,0,cx,cy,38);
+      g.addColorStop(0,col+'22'); g.addColorStop(1,'transparent');
+      ctx2.fillStyle=g; ctx2.beginPath(); ctx2.arc(cx,cy,38,0,Math.PI*2); ctx2.fill();
+      ctx2.strokeStyle=col+'33'; ctx2.lineWidth=1;
+      ctx2.beginPath(); ctx2.arc(cx,cy,22,0,Math.PI*2); ctx2.stroke();
+      ctx2.strokeStyle=col; ctx2.lineWidth=3;
+      ctx2.beginPath(); ctx2.arc(cx,cy,22,-Math.PI/2,(j.occ/100)*Math.PI*2-Math.PI/2); ctx2.stroke();
+      ctx2.fillStyle=col; ctx2.beginPath(); ctx2.arc(cx,cy,5,0,Math.PI*2); ctx2.fill();
+      ctx2.fillStyle='rgba(255,255,255,.75)'; ctx2.textAlign='center';
+      ctx2.font='bold 9px JetBrains Mono,monospace'; ctx2.fillText(j.occ+'%',cx,cy+3);
+      ctx2.fillStyle=col; ctx2.font='9px JetBrains Mono,monospace'; ctx2.fillText(j.id,cx,cy+36);
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+}());
+
+function renderJunctions(){
+  const el=document.getElementById('junction-list'); if(!el) return;
+  el.innerHTML=JUNCTIONS.map(j=>{
+    const bar=j.status==='ok'?'var(--green)':j.status==='warn'?'var(--yellow)':'var(--red)';
+    return `<div class="junction-card lg">
+      <div class="jc-header"><span class="jc-name">${j.label}</span><span class="jc-status ${j.status}">${j.status.toUpperCase()}</span></div>
+      <div class="jc-bar-wrap"><div class="jc-bar" style="width:${j.occ}%;background:${bar}"></div></div>
+      <div class="jc-meta"><span>Occupancy: ${j.occ}%</span><span>${j.vehicles} vehicles</span></div>
+    </div>`;
+  }).join('');
+}
+renderJunctions();
+setInterval(()=>{
+  JUNCTIONS.forEach(j=>{
+    j.occ=Math.max(5,Math.min(98,j.occ+Math.floor((Math.random()-.5)*8)));
+    j.vehicles=Math.max(1,j.vehicles+Math.floor((Math.random()-.5)*4));
+    j.status=j.occ>=85?'crit':j.occ>=60?'warn':'ok';
+  });
+  renderJunctions();
+},3000);
+
+/* ══════════════════════════
+   CONFIDENCE METER
+══════════════════════════ */
+(function(){
+  const cls=[{key:'car',base:91},{key:'truck',base:87},{key:'moto',base:83},{key:'bus',base:89}];
+  function upd(){
+    const vals=cls.map(c=>Math.max(60,Math.min(99,c.base+Math.floor((Math.random()-.5)*6))));
+    const avg=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+    const p=document.getElementById('conf-pct'),arc=document.getElementById('conf-arc-fill');
+    if(p) p.textContent=avg+'%';
+    if(arc) arc.setAttribute('stroke-dashoffset',141*(1-avg/100));
+    cls.forEach((c,i)=>{
+      const b=document.getElementById('cb-'+c.key),pct=document.getElementById('cp-'+c.key);
+      if(b) b.style.width=vals[i]+'%'; if(pct) pct.textContent=vals[i]+'%';
+    });
+  }
+  upd(); setInterval(upd,2500);
+}());
+
+/* ══════════════════════════
+   ALERTS
+══════════════════════════ */
+(function(){
+  const MAX=5; const alerts=[];
+  function ts(){ return new Date().toTimeString().slice(0,8); }
+  function push(){
+    const cJ=JUNCTIONS.find(j=>j.status==='crit');
+    const wJ=JUNCTIONS.find(j=>j.status==='warn');
+    const any=()=>JUNCTIONS[Math.floor(Math.random()*4)].label;
+    const pool=[
+      {type:'info',icon:'🔵',title:'SIGNAL ADJUSTED',  msg:`Adaptive timing applied to ${any()}`},
+      {type:'info',icon:'🔵',title:'MODEL OK',          msg:`YOLOv11 weights verified — nominal`},
+    ];
+    if(cJ) pool.push({type:'crit',icon:'🔴',title:'CRITICAL OCCUPANCY',msg:`${cJ.label} exceeds 85%`});
+    if(wJ) pool.push({type:'warn',icon:'🟡',title:'HIGH DENSITY',       msg:`${wJ.label} at elevated load`});
+    if(Math.random()<.3) pool.push({type:'warn',icon:'🟡',title:'ENTRY SPIKE',msg:`Unusual count at ${any()}`});
+    const tpl=pool[Math.floor(Math.random()*pool.length)];
+    alerts.unshift({...tpl,ts:ts()});
+    if(alerts.length>MAX) alerts.pop();
+    const el=document.getElementById('alert-list'); if(!el) return;
+    el.innerHTML=alerts.map(a=>`
+      <div class="alert-item ${a.type}">
+        <span class="alert-icon">${a.icon}</span>
+        <div class="alert-body"><strong>${a.title}</strong><span>${a.msg}</span></div>
+        <span class="alert-ts">${a.ts}</span>
+      </div>`).join('');
+  }
+  push(); setInterval(push,4000);
+}());
+
+/* ══════════════════════════
+   KPI + SPARKLINE
+══════════════════════════ */
+let detRunning=true;
+const history=Array.from({length:30},()=>Math.floor(Math.random()*28+6));
+const EVTS=['VEHICLE_ENTRY','ROI_ENTRY','TRACK_UPDATE','VEHICLE_EXIT'];
+function tsNow(){ return new Date().toTimeString().slice(0,8); }
+const inlineRows=[];
+
+function drawSparkline(svgId,data,color='#00e5ff'){
+  const svg=document.getElementById(svgId); if(!svg) return;
+  const W=svg.clientWidth||400,H=svg.clientHeight||65,max=Math.max(...data,1);
+  const pts=data.map((d,i)=>[(i/(data.length-1))*W,H-(d/max)*(H-10)-4]);
+  const pathD=pts.map((p,i)=>(i===0?`M${p[0]},${p[1]}`:`L${p[0]},${p[1]}`)).join(' ');
+  const fillD=`${pathD} L${W},${H} L0,${H} Z`;
+  svg.innerHTML=`<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${color}" stop-opacity=".2"/>
+    <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+  </linearGradient></defs>
+  <path d="${fillD}" fill="url(#sg)"/>
+  <path d="${pathD}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`;
+}
+
+function tick(){
+  const v=Math.floor(Math.random()*35+8);
+  const w=(Math.random()*12+4).toFixed(1);
+  const o=Math.floor(Math.random()*40+30);
+  const kv=document.getElementById('kpi-v'),kw=document.getElementById('kpi-w'),ko=document.getElementById('kpi-o');
+  if(kv)kv.textContent=v; if(kw)kw.textContent=w+'s'; if(ko)ko.textContent=o+'%';
+  history.shift(); history.push(v);
+  drawSparkline('sparkline-svg',history);
+  const junc=JIDS[Math.floor(Math.random()*JIDS.length)];
+  const evt=EVTS[Math.floor(Math.random()*EVTS.length)];
+  inlineRows.unshift({ts:tsNow(),junc,evt,count:v});
+  if(inlineRows.length>9) inlineRows.pop();
+  const il=document.getElementById('inline-log');
+  if(il) il.innerHTML=inlineRows.map(r=>`<div class="dlr"><span class="dt">${r.ts}</span><span class="dj">${r.junc}</span><span class="dm">${r.evt}</span><span class="dc">+${r.count}</span></div>`).join('');
+}
+tick(); setInterval(tick,2000);
+
+/* ══════════════════════════
+   VIDEO TOGGLE
+══════════════════════════ */
+function toggleVideo(vidId, overlayId) {
+  const vid = document.getElementById(vidId);
+  const overlay = document.getElementById(overlayId);
+  if (!vid) return;
+  if (vid.paused) {
+    vid.play();
+    overlay.classList.add('hidden');
+    vid.addEventListener('pause', function onPause() {
+      overlay.classList.remove('hidden');
+      vid.removeEventListener('pause', onPause);
+    });
+    vid.addEventListener('ended', function onEnd() {
+      overlay.classList.remove('hidden');
+      vid.removeEventListener('ended', onEnd);
+    });
+  } else {
+    vid.pause();
+  }
+}
+
+/* ══════════════════════════
+   NAV SCROLL OPACITY
+══════════════════════════ */
+window.addEventListener('scroll',()=>{
+  document.querySelector('nav').style.opacity = window.scrollY > 60 ? .95 : 1;
+},{passive:true});
+</script>
+</body>
+</html>
