@@ -14,12 +14,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge" alt="MIT License" /></a>
 </p>
 
-<p align="center">
-  <img src="docs/assets/dashboard-preview.png" alt="Smart Traffic AI Dashboard Preview" width="100%" />
-</p>
-
 ---
-
 ## Overview
 
 **Smart Traffic AI** is a real-time computer vision and traffic intelligence platform designed for municipal monitoring, road network analysis, and incident alerting. Powered by **YOLOv11**, **ByteTrack**, and a reactive **FastAPI + React 18** architecture, it transforms standard RTSP/HLS surveillance feeds into actionable traffic metrics, spatial occupancy heatmaps, and automated congestion forecasts.
