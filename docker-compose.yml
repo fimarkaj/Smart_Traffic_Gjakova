@@ -4,8 +4,8 @@ services:
 
   detector:
     build:
-      context: ./detector
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: detector/Dockerfile
     volumes:
       - ./config.yaml:/app/config.yaml:ro
       - ./data:/app/data
@@ -23,8 +23,8 @@ services:
 
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api/Dockerfile
     ports:
       - "8000:8000"
     volumes:

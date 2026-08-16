@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from auth import get_current_user
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "detector"))
-from config_loader import cfg
+from config_loader import PROJECT_ROOT, cfg, resolve_path
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
@@ -32,17 +32,17 @@ class CountingLine(BaseModel):
 
 @router.get("/lines")
 def get_lines(user: str = Depends(get_current_user)):
-    lines_file = Path(cfg["line_counter"]["lines_file"])
+    lines_file = resolve_path(cfg["line_counter"]["lines_file"])
     if not lines_file.exists():
         return {}
-    return json.loads(lines_file.read_text())
+    return json.loads(lines_file.read_text(encoding="utf-8"))
 
 
 @router.put("/lines")
 def save_lines(lines: dict, user: str = Depends(get_current_user)):
-    lines_file = Path(cfg["line_counter"]["lines_file"])
+    lines_file = resolve_path(cfg["line_counter"]["lines_file"])
     lines_file.parent.mkdir(parents=True, exist_ok=True)
-    lines_file.write_text(json.dumps(lines, indent=2))
+    lines_file.write_text(json.dumps(lines, indent=2), encoding="utf-8")
     # Hot-reload in detector
     try:
         from main import line_counter
@@ -72,11 +72,12 @@ def save_thresholds(thresholds: Thresholds, user: str = Depends(get_current_user
     cfg["thresholds"]["yellow"] = thresholds.yellow
     # Persist back to config.yaml
     import yaml
-    config_path = Path(__file__).parent.parent.parent / "config.yaml"
-    full_cfg = yaml.safe_load(config_path.read_text())
+    config_path = PROJECT_ROOT / "config.yaml"
+    full_cfg = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     full_cfg["thresholds"] = {"green": thresholds.green, "yellow": thresholds.yellow}
-    config_path.write_text(yaml.dump(full_cfg, default_flow_style=False))
+    config_path.write_text(yaml.dump(full_cfg, default_flow_style=False), encoding="utf-8")
     return {"status": "saved", "thresholds": thresholds.dict()}
+
 
 
 # ---------------------------------------------------------------------------

@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from capture import frame_generator
 from clip_recorder import ClipRecorder
-from config_loader import cfg
+from config_loader import PROJECT_ROOT, cfg, resolve_path
 from detect import YOLODetector
 from health_monitor import HealthMonitor
 from line_counter import LineCrossingCounter
@@ -39,17 +39,25 @@ logger = logging.getLogger(__name__)
 
 def _should_trigger_clip(roi_counts: dict, crossings_per_minute: float) -> str | None:
     """Return reason string if clip should be triggered, else None."""
-    clip_cfg = cfg["clips"]
+    clip_cfg = cfg.get("clips", {})
+    trigger_occ = clip_cfg.get("trigger_occupancy", 10)
+    trigger_rate = clip_cfg.get("trigger_crossing_rate", 5)
     for name, count in roi_counts.items():
-        if count >= clip_cfg["trigger_occupancy"]:
+        if count >= trigger_occ:
             return f"high_occupancy_{name}_{count}"
-    if crossings_per_minute >= clip_cfg["trigger_crossing_rate"]:
+    if crossings_per_minute >= trigger_rate:
         return f"crossing_spike_{crossings_per_minute:.0f}pm"
     return None
 
 
 def run():
     logger.info("=== Smart Traffic AI — Detector starting ===")
+
+    # Ensure runtime directories exist
+    (PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
+    (PROJECT_ROOT / "data" / "clips").mkdir(parents=True, exist_ok=True)
+    (PROJECT_ROOT / "models").mkdir(parents=True, exist_ok=True)
+
 
     # --- Initialise components -------------------------------------------
     health        = HealthMonitor(camera_id="main")

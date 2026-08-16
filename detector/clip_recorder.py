@@ -21,16 +21,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from config_loader import cfg
+from config_loader import cfg, resolve_path
 
 logger = logging.getLogger(__name__)
 
 
 class ClipRecorder:
     def __init__(self):
-        clip_cfg = cfg["clips"]
-        self._output_dir = Path(clip_cfg["output_dir"])
+        clip_cfg = cfg.get("clips", {})
+        self._output_dir = resolve_path(clip_cfg.get("output_dir", "data/clips"))
         self._output_dir.mkdir(parents=True, exist_ok=True)
+
 
         # Assume 25fps for buffer sizing; updated when first frame arrives
         self._fps = 25.0

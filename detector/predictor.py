@@ -5,10 +5,11 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
-from config_loader import cfg
+from config_loader import cfg, resolve_path
 
 logger = logging.getLogger(__name__)
-MODEL_PATH = Path(cfg.get("forecast", {}).get("model_path", Path(__file__).resolve().parents[1] / "training" / "out" / "traffic_congestion_model.pkl")).expanduser()
+MODEL_PATH = resolve_path(cfg.get("forecast", {}).get("model_path", "training/out/traffic_congestion_model.pkl"))
+
 
 ROI_TO_FEATURE = {
     "Lane 1": "lane_1", "1": "lane_1",

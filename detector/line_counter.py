@@ -20,7 +20,7 @@ import math
 import time
 from pathlib import Path
 
-from config_loader import cfg
+from config_loader import cfg, resolve_path
 
 logger = logging.getLogger(__name__)
 
@@ -98,20 +98,29 @@ class LineCrossingCounter:
             logger.info("No direction tags found — using unique_crossers // 2 fallback")
 
     def _load(self, path: str):
-        p = Path(path)
+        p = resolve_path(path)
         if not p.exists():
-            logger.warning(f"counting_lines.json not found: {path}")
-            return
-        with open(p) as f:
-            self._lines = json.load(f)
-        logger.info(f"Loaded {len(self._lines)} counting lines")
+            # Check data/ fallback
+            p_fallback = resolve_path(f"data/{Path(path).name}")
+            if p_fallback.exists():
+                p = p_fallback
+            else:
+                logger.warning(f"counting_lines.json not found at: {p}")
+                return
+        try:
+            with open(p, encoding="utf-8") as f:
+                self._lines = json.load(f)
+            logger.info(f"Loaded {len(self._lines)} counting lines from {p.name}")
+        except Exception as exc:
+            logger.error(f"Error loading counting lines file '{p}': {exc}")
 
     def reload(self, path: str = None):
-        p = path or cfg["line_counter"]["lines_file"]
+        p = path or cfg.get("line_counter", {}).get("lines_file", "data/counting_lines.json")
         self._load(p)
         for name in self._lines:
             if name not in self._counts:
                 self._counts[name] = 0
+
 
     def is_ready(self) -> bool:
         return len(self._lines) > 0

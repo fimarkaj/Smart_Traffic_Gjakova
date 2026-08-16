@@ -23,13 +23,14 @@ async def swap_model(
 
     import sys
     sys.path.insert(0, str(Path(__file__).parent.parent.parent / "detector"))
-    from config_loader import cfg
-    swap_dir = Path(cfg["model"]["hot_swap_dir"])
+    from config_loader import cfg, resolve_path
+    swap_dir = resolve_path(cfg["model"]["hot_swap_dir"])
     swap_dir.mkdir(parents=True, exist_ok=True)
 
     dest = swap_dir / file.filename
     with open(dest, "wb") as f:
         shutil.copyfileobj(file.file, f)
+
 
     # ModelManager watcher will pick it up within POLL_INTERVAL seconds
     return {"status": "uploaded", "filename": file.filename,

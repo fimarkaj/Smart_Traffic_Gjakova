@@ -19,9 +19,17 @@ from fastapi.middleware.cors import CORSMiddleware
 DETECTOR_PATH = str(Path(__file__).parent.parent / "detector")
 sys.path.insert(0, DETECTOR_PATH)
 
-from config_loader import cfg
+from config_loader import PROJECT_ROOT, cfg, resolve_path
 from db import init_db, open_db, seed_rois, sync_default_alert_rules
 from shared_state import state as shared_state  # noqa: F401
+
+# ---------------------------------------------------------------------------
+# Ensure required runtime directories exist
+# ---------------------------------------------------------------------------
+
+(PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
+(PROJECT_ROOT / "data" / "clips").mkdir(parents=True, exist_ok=True)
+(PROJECT_ROOT / "models").mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # App-level singletons
@@ -35,7 +43,8 @@ sync_default_alert_rules(db_conn, cfg.get("alerts", {}).get("default_rules", [])
 try:
     from model_manager import ModelManager
     model_manager = ModelManager()
-except Exception:
+except Exception as exc:
+    logging.getLogger(__name__).warning(f"ModelManager initialization notice: {exc}")
     model_manager = None
 
 try:
@@ -63,9 +72,21 @@ app = FastAPI(
     version="2.0.0",
 )
 
+configured_origins = cfg.get("api", {}).get("cors_origins", [])
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:80",
+    "http://localhost",
+    "http://127.0.0.1:80",
+    "http://127.0.0.1",
+    "http://localhost:3000",
+]
+all_origins = list(set(configured_origins + default_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cfg["api"]["cors_origins"],
+    allow_origins=all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -102,8 +123,6 @@ app.include_router(forecast_router)
 def _run_detector():
     """Run the detection loop in a background thread."""
     try:
-        import os
-        os.chdir(DETECTOR_PATH)
         from detector import run
         run()
     except Exception as exc:
@@ -113,6 +132,11 @@ def _run_detector():
 @app.on_event("startup")
 async def startup():
     logger.info("Starting background services…")
+
+    # Re-verify directories on startup
+    (PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
+    (PROJECT_ROOT / "data" / "clips").mkdir(parents=True, exist_ok=True)
+    (PROJECT_ROOT / "models").mkdir(parents=True, exist_ok=True)
 
     from services.alert_engine import AlertEngine
     from services.retention    import RetentionScheduler
@@ -137,6 +161,7 @@ async def startup():
     start_predictor_thread()
 
     logger.info("Smart Traffic AI API ready")
+
 
 
 @app.on_event("shutdown")

@@ -120,8 +120,8 @@ export default function Camera() {
             <div className="panel" style={{ padding:12 }}>
               <ModuleHeader label="Config Paths" id="CAM-PATH" />
               {[
-                { label:'Zona CSV',    value:'D:/Yolov11/rois_polygons.csv' },
-                { label:'Lines JSON', value:'D:/Yolov11/finalcode3/counting_lines.json' },
+                { label:'Zona CSV',    value:'data/rois_polygons.csv' },
+                { label:'Lines JSON', value:'data/counting_lines.json' },
               ].map(({ label, value }) => (
                 <div key={label} style={{ marginBottom:10 }}>
                   <p style={{ fontFamily:'var(--fm)', fontSize:9, color:'var(--t4)', letterSpacing:'.15em', marginBottom:3 }}>{label}</p>
@@ -129,6 +129,7 @@ export default function Camera() {
                 </div>
               ))}
             </div>
+
           </div>
         </div>
       </div>

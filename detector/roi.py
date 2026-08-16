@@ -15,7 +15,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from config_loader import cfg
+from config_loader import cfg, resolve_path
 
 logger = logging.getLogger(__name__)
 
@@ -60,16 +60,17 @@ def _apply_offset(contour: np.ndarray, ox: int, oy: int) -> np.ndarray:
 
 
 def load_rois() -> dict[str, np.ndarray]:
-    roi_cfg  = cfg["roi"]
-    csv_path = Path(roi_cfg["csv_path"])
-    col      = roi_cfg["points_column"]
+    roi_cfg  = cfg.get("roi", {})
+    raw_path = roi_cfg.get("csv_path", "data/rois_polygons.csv")
+    csv_path = resolve_path(raw_path)
+    col      = roi_cfg.get("points_column", "cropped_points")
     ox       = int(roi_cfg.get("offset_x", 0))
     oy       = int(roi_cfg.get("offset_y", 0))
 
     if not csv_path.exists():
-        csv_path = Path(__file__).parent / csv_path.name
+        csv_path = resolve_path(f"data/{Path(raw_path).name}")
     if not csv_path.exists():
-        raise FileNotFoundError(f"ROI CSV not found: {roi_cfg['csv_path']}")
+        raise FileNotFoundError(f"ROI CSV not found: {raw_path}")
 
     rois = {}
     with open(csv_path, newline="", encoding="utf-8") as f:
@@ -81,6 +82,7 @@ def load_rois() -> dict[str, np.ndarray]:
 
     logger.info(f"Loaded {len(rois)} ROIs (offset: x={ox}, y={oy})")
     return rois
+
 
 
 def count_occupancy(detections: list[dict], rois: dict[str, np.ndarray]) -> dict[str, int]:

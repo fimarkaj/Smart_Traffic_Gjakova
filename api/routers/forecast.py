@@ -3,11 +3,12 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
-from config_loader import cfg
+from config_loader import cfg, resolve_path
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/forecast", tags=["forecast"])
-MODEL_PATH = Path(cfg.get("forecast", {}).get("model_path", Path(__file__).resolve().parents[2] / "training" / "out" / "traffic_congestion_model.pkl")).expanduser()
+MODEL_PATH = resolve_path(cfg.get("forecast", {}).get("model_path", "training/out/traffic_congestion_model.pkl"))
+
 
 
 @router.get("/live")

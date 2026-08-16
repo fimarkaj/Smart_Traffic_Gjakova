@@ -45,9 +45,8 @@ if not exist "%ROOT%models" mkdir "%ROOT%models"
 :: Check model
 if not exist "%ROOT%models\best.pt" (
     echo.
-    echo [WARN] Model not found at models\best.pt
-    echo        Place your best.pt in the models\ folder before running.
-    echo        See README.md for details.
+    echo [INFO] Custom weights models\best.pt not found.
+    echo        The detector will automatically use the standard YOLOv11 fallback model.
     echo.
 )
 
@@ -62,10 +61,11 @@ popd
 :: Start API + Detector
 echo [START] Launching API + Detector...
 if defined USE_SYSTEM_PYTHON (
-    start "SmartTraffic - API" cmd /k "cd /d "%API_DIR%" && pip install -r requirements.txt -q && uvicorn main:app --host 0.0.0.0 --port 8000"
+    start "SmartTraffic - API" cmd /k "cd /d "%API_DIR%" && pip install -r requirements.txt -r "%ROOT%detector\requirements.txt" -q && uvicorn main:app --host 0.0.0.0 --port 8000"
 ) else (
     start "SmartTraffic - API" cmd /k "call "%CONDA_ACTIVATE%" "%CONDA_ENV%" && cd /d "%API_DIR%" && uvicorn main:app --host 0.0.0.0 --port 8000"
 )
+
 
 timeout /t 5 /nobreak >nul
 

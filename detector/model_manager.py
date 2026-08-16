@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from config_loader import cfg
+from config_loader import cfg, resolve_path
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ class ModelManager:
 
     def __init__(self):
         model_cfg = cfg["model"]
-        self._model_path = Path(model_cfg["path"])
-        self._hot_swap_dir = Path(model_cfg["hot_swap_dir"])
+        self._model_path = resolve_path(model_cfg["path"])
+        self._hot_swap_dir = resolve_path(model_cfg["hot_swap_dir"])
         self._hot_swap_dir.mkdir(parents=True, exist_ok=True)
 
         self._model = None
@@ -50,17 +50,22 @@ class ModelManager:
     def track(self, frame, **kwargs):
         """Run model.track() with current model. Thread-safe."""
         with self._lock:
+            if self._model is None:
+                return []
             return self._model.track(frame, **kwargs)
 
     @property
     def names(self) -> dict:
         with self._lock:
-            return self._model.names
+            if self._model is not None and hasattr(self._model, "names"):
+                return self._model.names
+            return {0: "car", 1: "vehicle"}
 
     def get_status(self) -> dict:
         with self._lock:
             return {
-                "current_model":  str(self._current_path),
+                "current_model":  str(self._current_path) if self._current_path else None,
+                "model_loaded":   self._model is not None,
                 "swap_count":     self._swap_count,
                 "last_swap_ts":   self._last_swap_ts,
             }
@@ -70,7 +75,7 @@ class ModelManager:
         Explicitly swap to a new model file.
         Returns True on success.
         """
-        path = Path(new_path)
+        path = resolve_path(new_path)
         if not path.exists():
             logger.error(f"Model swap failed: file not found: {path}")
             return False
@@ -87,19 +92,57 @@ class ModelManager:
 
     def _load(self, path: Path):
         from ultralytics import YOLO
-        if not path.exists():
-            raise FileNotFoundError(f"YOLO model not found: {path}")
 
-        logger.info(f"Loading model: {path}")
-        new_model = YOLO(str(path))
+        target_path = path
+        if not target_path.exists():
+            # Check for any other .pt in hot_swap_dir or models/
+            available_pts = list(self._hot_swap_dir.glob("*.pt"))
+            if available_pts:
+                target_path = available_pts[0]
+                logger.warning(
+                    f"Configured model '{path}' not found. Using available weights: '{target_path.name}'"
+                )
+            else:
+                # Attempt standard YOLO fallback (auto-download nano weights if online)
+                fallback_name = "yolo11n.pt"
+                logger.warning(
+                    f"Model '{path}' not found! Attempting fallback to standard '{fallback_name}'."
+                )
+                try:
+                    new_model = YOLO(fallback_name)
+                    with self._lock:
+                        self._model = new_model
+                        self._current_path = Path(fallback_name)
+                        self._swap_count += 1
+                        self._last_swap_ts = time.time()
+                    logger.info(f"Fallback model '{fallback_name}' loaded successfully.")
+                    return
+                except Exception as fb_exc:
+                    logger.warning(
+                        f"Could not load fallback weights '{fallback_name}': {fb_exc}. "
+                        f"Detector running in standby mode until a model is placed in '{self._hot_swap_dir}'."
+                    )
+                    with self._lock:
+                        self._model = None
+                        self._current_path = None
+                    return
 
-        with self._lock:
-            self._model = new_model
-            self._current_path = path
-            self._swap_count += 1
-            self._last_swap_ts = time.time()
+        try:
+            logger.info(f"Loading YOLO model: {target_path}")
+            new_model = YOLO(str(target_path))
 
-        logger.info(f"Model loaded: {path.name} (swap #{self._swap_count})")
+            with self._lock:
+                self._model = new_model
+                self._current_path = target_path
+                self._swap_count += 1
+                self._last_swap_ts = time.time()
+
+            logger.info(f"Model loaded: {target_path.name} (swap #{self._swap_count})")
+        except Exception as exc:
+            logger.error(f"Failed to load YOLO model '{target_path}': {exc}")
+            with self._lock:
+                self._model = None
+                self._current_path = None
 
     def _start_watcher(self):
         self._watcher_thread = threading.Thread(
@@ -121,7 +164,7 @@ class ModelManager:
             try:
                 pt_files = [
                     f for f in self._hot_swap_dir.glob("*.pt")
-                    if f != self._current_path
+                    if self._current_path is None or f != self._current_path
                 ]
                 if not pt_files:
                     continue
@@ -142,3 +185,4 @@ class ModelManager:
 
             except Exception as exc:
                 logger.error(f"Model watcher error: {exc}")
+

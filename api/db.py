@@ -123,8 +123,13 @@ ROI_DEFINITIONS = [
 # Connection
 # ---------------------------------------------------------------------------
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
 def open_db(db_path: str = "data/traffic.db") -> sqlite3.Connection:
-    path = Path(db_path)
+    path = Path(db_path).expanduser()
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -133,6 +138,7 @@ def open_db(db_path: str = "data/traffic.db") -> sqlite3.Connection:
     conn.execute("PRAGMA cache_size=-16000;")
     conn.execute("PRAGMA foreign_keys=ON;")
     return conn
+
 
 
 def init_db(conn: sqlite3.Connection):
